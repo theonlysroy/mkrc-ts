@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import os from 'node:os';
 import path from 'node:path';
 import fs from 'fs-extra';
-import { createComponent } from '../src/lib/generator.js';
+import { createComponent } from '../bin/generator.js';
 
 async function withTempCwd(run) {
   const originalCwd = process.cwd();

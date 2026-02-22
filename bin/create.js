@@ -3,8 +3,8 @@ import boxen from 'boxen';
 import chalk from 'chalk';
 import { cancel, intro, outro } from '@clack/prompts';
 import ora from 'ora';
-import { createComponent } from '../lib/generator.js';
-import { promptForCreateInputs } from '../lib/prompts.js';
+import { createComponent } from './generator.js';
+import { promptForCreateInputs } from './prompts.js';
 
 const VALID_LANGS = new Set(['tsx', 'jsx']);
 

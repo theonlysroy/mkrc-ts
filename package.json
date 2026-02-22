@@ -1,6 +1,6 @@
 {
   "name": "mkrc-ts",
-  "version": "1.0.1",
+  "version": "1.0.0",
   "description": "CLI for generating React component files in module folders",
   "keywords": [
     "react",
@@ -19,17 +19,13 @@
     "url": "https://github.com/theonlysroy/mkrc-ts/issues"
   },
   "type": "module",
-  "engines": {
-    "node": ">=18.0.0"
-  },
   "files": [
     "bin/",
-    "src/",
     "README.md",
     "LICENSE"
   ],
   "bin": {
-    "mknrc": "./bin/index.js"
+    "mknrc": "bin/index.js"
   },
   "scripts": {
     "start": "node ./bin/index.js",
