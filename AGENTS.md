@@ -14,12 +14,13 @@ CLI name: `mknrc` (short for "make new React component")
 | Package | Purpose |
 |---|---|
 | `commander` | CLI argument/option parsing and subcommand structure |
-| `inquirer` | Interactive prompts (module name, component name, language) |
+| `@clack/prompts` | Interactive prompts and cancellation-aware prompt flow |
+| `ora` | Spinner for generation progress |
+| `boxen` | Styled boxed terminal sections (intro + summary) |
+| `chalk` | Terminal color styling |
 | `fs-extra` | Enhanced file system operations (`ensureDir`, `pathExists`, etc.) |
-| `chalk` | Terminal output styling (success, error, info messages) |
-| `prettier` | Optional: format generated files before writing |
 
-> No build tools are needed. The CLI runs directly via Node.js with an `#!/usr/bin/env node` shebang. If TypeScript is used for the CLI source itself, add `tsx` or `ts-node` as a dev dependency.
+> The CLI runs directly via Node.js with an `#!/usr/bin/env node` shebang in `bin/index.js`.
 
 ---
 
@@ -31,11 +32,14 @@ mkrc-ts/
 │   └── index.js          # CLI entry point (shebang + commander setup)
 ├── src/
 │   commands/
-│   │   └── create.js     # "create" command handler
+│   │   └── create.js     # "create" command handler + UX rendering
 │   └── lib/
-│       ├── prompts.js    # Inquirer prompt definitions
-│       ├── generator.js  # Core file generation logic
+│       ├── prompts.js    # @clack/prompts prompt definitions
+│       ├── generator.js  # Core file generation logic (returns structured result)
 │       └── templates.js  # Component + barrel file templates
+├── test/
+│   └── generator.test.js # Node test runner tests for generator behavior
+├── Makefile
 ├── package.json
 └── AGENTS.md
 ```
@@ -52,51 +56,66 @@ mknrc create --module Dashboard --component Widget --lang tsx
 # Direct flags, skips prompts
 ```
 
-### Prompts (via `inquirer`)
+### Prompts (via `@clack/prompts`)
 
-1. **Module name** — the folder name (e.g. `Dashboard`). This is the feature/domain folder.
-2. **Component name** — the React component file name (e.g. `Widget`). Defaults to module name if not provided.
-3. **Language** — choice between `tsx` (TypeScript) or `jsx` (JavaScript).
+1. **Module name** — the folder name (e.g. `Dashboard`).
+2. **Component name** — defaults to module name if not provided.
+3. **Language** — `tsx` or `jsx`.
+
+### Terminal UX
+
+- `intro()` heading from `@clack/prompts`
+- intro/summary content wrapped with `boxen`
+- generation progress spinner via `ora`
+- final `outro()` success line
+
+---
+
+## Interrupt & Cancel Handling
+
+The create flow handles user interruption gracefully:
+
+- `Ctrl+C` (`SIGINT`) exits safely with code `130`
+- `Ctrl+X` (control char `\u0018`) exits safely with code `130`
+- Prompt cancellation from `@clack/prompts` returns a clean cancel message
 
 ---
 
 ## Multi-Component Module Design
 
-A module folder can contain multiple component files. The folder name represents the **feature/domain**, not a single component.
+A module folder can contain multiple component files. The folder name represents the feature/domain, not a single component.
 
 **Example structure:**
 ```
 Dashboard/
-├── Dashboard.tsx       ← default component (matches folder)
-├── DashboardHeader.tsx ← additional component
-├── DashboardChart.tsx  ← additional component
-└── index.ts            ← barrel file — re-exports all components
+├── Dashboard.tsx
+├── DashboardHeader.tsx
+├── DashboardChart.tsx
+└── index.ts
 ```
 
 ### Rules
 
-- The folder is created once using `fs-extra.ensureDir()` — safe to call multiple times, no error if it already exists.
-- Each component gets its own `.tsx` / `.jsx` file named after the **component**, not the folder.
-- The `index.ts` / `index.js` barrel file is **appended to** (not overwritten) when a new component is added to an existing module.
-- Before writing, check if the component file already exists using `fs-extra.pathExists()` and warn the user rather than silently overwriting.
+- The folder is created with `fs-extra.ensureDir()`.
+- Each component gets its own `.tsx`/`.jsx` file named after the component.
+- The barrel `index.ts`/`index.js` is additive when module already exists.
+- Existing component files are never overwritten.
 
-### Barrel File Strategy
+### Barrel Strategy
 
-On each `create` run, the generator:
-1. Reads the existing `index` file (if present).
-2. Checks if an export for the new component already exists.
-3. Appends the new export line if it does not.
-
-This keeps all barrel file updates additive and non-destructive.
+On each `create` run:
+1. Build target paths (`component` + `index`).
+2. Create component file if missing.
+3. Create barrel file when absent.
+4. Otherwise append export line only when not already present.
 
 ---
 
 ## File Templates
 
-### Component Template (`templates.js`)
+### Component Template (`src/lib/templates.js`)
 
 ```js
-// tsx variant
 export const componentTemplate = (name, lang) => `
 import React from 'react';
 ${lang === 'tsx' ? `\ninterface ${name}Props {}\n` : ''}
@@ -112,37 +131,31 @@ export default ${name};
 `.trimStart();
 ```
 
-### Barrel File — New (`templates.js`)
+### Barrel Templates (`src/lib/templates.js`)
 
 ```js
 export const barrelTemplate = (name) =>
   `export { default as ${name} } from './${name}';\n`;
-```
 
-### Barrel File — Append line
-
-```js
 export const barrelExportLine = (name) =>
   `export { default as ${name} } from './${name}';\n`;
 ```
 
 ---
 
-## Core Generator Logic (`generator.js`)
+## Core Generator Logic (`src/lib/generator.js`)
 
-```
-createComponent(moduleName, componentName, lang):
-  1. Resolve target directory → `<cwd>/<moduleName>/`
-  2. fs-extra.ensureDir(targetDir)                  // creates folder if not exists
-  3. Build component file path → `<targetDir>/<componentName>.<lang>`
-  4. Check pathExists → warn and abort if duplicate
-  5. Write component file using componentTemplate()
-  6. Build index file path → `<targetDir>/index.<indexExt>`
-     - indexExt = lang === 'tsx' ? 'ts' : 'js'
-  7. If index does not exist → write fresh barrel file
-     Else → read existing, check for duplicate export, append if missing
-  8. Log success with chalk
-```
+`createComponent(moduleName, componentName, lang)`:
+
+1. Validate `lang` (`tsx`/`jsx`).
+2. Resolve `<cwd>/<moduleName>/` and component/index paths.
+3. `ensureDir(targetDir)`.
+4. Detect mixed extension modules and accumulate warnings.
+5. If component file exists: return a structured "skipped" result.
+6. Write component file from template.
+7. Create barrel file if missing.
+8. If barrel exists, append export only when missing.
+9. Return structured result for UI rendering (`componentCreated`, `componentSkipped`, `barrelCreated`, `barrelAppended`, `exportSkipped`, `warnings`, paths).
 
 ---
 
@@ -151,11 +164,32 @@ createComponent(moduleName, componentName, lang):
 | Scenario | Behaviour |
 |---|---|
 | Folder already exists | `ensureDir` is a no-op — proceeds safely |
-| Component file already exists | Warn user, exit without overwriting |
-| Export already in index | Skip append, notify user |
-| Module name === Component name | Valid — standard single-component module |
-| Module name !== Component name | Valid — multi-component module, folder name stays as module |
-| Mixed `tsx`/`jsx` in same module | Discouraged — warn user if extension mismatch detected in existing folder |
+| Component file already exists | Skips creation; does not overwrite |
+| Export already in index | Skips duplicate append |
+| Module name === Component name | Valid |
+| Module name !== Component name | Valid multi-component module |
+| Mixed `tsx`/`jsx` in same module | Allowed but warning is returned/displayed |
+
+---
+
+## Testing
+
+- Test framework: Node built-in test runner (`node --test`)
+- Test file: `test/generator.test.js`
+- Covered behaviors include:
+  - TSX creation + `index.ts` barrel creation
+  - append behavior for second component
+  - duplicate component skip/no overwrite
+  - JSX creation + `index.js`
+  - mixed extension warning behavior
+
+### Commands
+
+```bash
+npm test
+make test
+make test-watch
+```
 
 ---
 
@@ -163,12 +197,16 @@ createComponent(moduleName, componentName, lang):
 
 ```json
 {
-  "name": "react-gen",
+  "name": "mkrc-ts",
   "version": "1.0.0",
+  "type": "module",
   "bin": {
     "mknrc": "./bin/index.js"
   },
-  "type": "module",
+  "scripts": {
+    "start": "node ./bin/index.js",
+    "test": "node --test"
+  }
 }
 ```
 
@@ -176,9 +214,9 @@ createComponent(moduleName, componentName, lang):
 
 ## Implementation Notes for the Agent
 
-- Use **ES Modules** (`"type": "module"`) to stay current; all imports use `import`/`export`.
-- `chalk` v5+ and `inquirer` v9+ are ESM-only — do not use `require()`.
-- Keep `bin/index.js` thin: parse args with `commander`, delegate to `src/commands/create.js`.
-- Keep templates in `src/lib/templates.js` as pure functions — easy to extend later (e.g. adding Storybook or test file generation).
-- All file I/O goes through `fs-extra`, never raw `fs`, for safety and convenience.
-- Output clear, coloured feedback for every action: created / skipped / appended.
+- Use **ES Modules** (`"type": "module"`); use `import`/`export`, not `require()`.
+- Keep `bin/index.js` thin; parse args with `commander` and delegate to `src/commands/create.js`.
+- Keep templates pure in `src/lib/templates.js`.
+- Keep generation side effects in `src/lib/generator.js`; return structured status instead of printing there.
+- Keep CLI rendering concerns (spinner, boxed output, intro/outro, cancellation messages) in `src/commands/create.js`.
+- All file I/O should use `fs-extra`.
