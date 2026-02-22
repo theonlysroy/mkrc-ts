@@ -5,14 +5,14 @@ CLI tool to scaffold React component files into module folders with barrel expor
 ## Install
 
 ```bash
-npm install mkrc-ts -g
+npm install mkrfc -g
 ```
 
 ## Usage
 
 ```bash
-mknrc create
-mknrc create --module Dashboard --component Widget --lang tsx
+mkrfc create
+mkrfc create --module Dashboard --component Widget --lang tsx
 ```
 
 ## Output Example
