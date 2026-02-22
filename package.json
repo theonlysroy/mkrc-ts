@@ -1,8 +1,27 @@
 {
-  "name": "mkrc-ts",
+  "name": "@theonlysroy/mkrc-ts",
   "version": "1.0.0",
   "description": "CLI for generating React component files in module folders",
+  "keywords": [
+    "react",
+    "component",
+    "generator",
+    "cli"
+  ],
+  "author": "Swagatam Roy",
+  "license": "MIT",
+  "homepage": "https://github.com/theonlysroy/mkrc-ts#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/theonlysroy/mkrc-ts.git"
+  },
+  "bugs": {
+    "url": "https://github.com/theonlysroy/mkrc-ts/issues"
+  },
   "type": "module",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "bin": {
     "mknrc": "./bin/index.js"
   },
