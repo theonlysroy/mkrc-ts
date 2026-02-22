@@ -1,5 +1,5 @@
 {
-  "name": "mkrc-ts",
+  "name": "mkrfc",
   "version": "1.0.0",
   "description": "CLI for generating React component files in module folders",
   "keywords": [
@@ -25,7 +25,7 @@
     "LICENSE"
   ],
   "bin": {
-    "mknrc": "bin/index.js"
+    "mkrfc": "bin/index.js"
   },
   "scripts": {
     "start": "node ./bin/index.js",
