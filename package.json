@@ -1,6 +1,6 @@
 {
-  "name": "@theonlysroy/mkrc-ts",
-  "version": "1.0.1",
+  "name": "mkrc-ts",
+  "version": "1.0.0",
   "description": "CLI for generating React component files in module folders",
   "keywords": [
     "react",
@@ -23,15 +23,18 @@
     "node": ">=18.0.0"
   },
   "files": [
-    "bin",
-    "src"
+    "bin/",
+    "src/",
+    "README.md",
+    "LICENSE"
   ],
   "bin": {
     "mknrc": "./bin/index.js"
   },
   "scripts": {
     "start": "node ./bin/index.js",
-    "test": "node --test"
+    "test": "node --test",
+    "prepublishOnly": "npm test && npm pack --dry-run"
   },
   "dependencies": {
     "@clack/prompts": "^1.0.1",

@@ -5,7 +5,7 @@ CLI tool to scaffold React component files into module folders with barrel expor
 ## Install
 
 ```bash
-npm install
+npm install mkrc-ts -g
 ```
 
 ## Usage
