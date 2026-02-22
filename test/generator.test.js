@@ -53,10 +53,11 @@ test('does not overwrite existing component files', { concurrency: false }, asyn
     const componentPath = path.join(cwd, 'Dashboard', 'Widget.tsx');
     const originalContent = await fs.readFile(componentPath, 'utf8');
 
-    await createComponent('Dashboard', 'Widget', 'tsx');
+    const result = await createComponent('Dashboard', 'Widget', 'tsx');
 
     const afterContent = await fs.readFile(componentPath, 'utf8');
     assert.equal(afterContent, originalContent);
+    assert.equal(result.componentSkipped, true);
   });
 });
 
@@ -72,5 +73,15 @@ test('creates jsx component with index.js barrel', { concurrency: false }, async
 
     const indexContent = await fs.readFile(indexPath, 'utf8');
     assert.match(indexContent, /export \{ default as BillingCard \} from '\.\/BillingCard';/);
+  });
+});
+
+test('returns warning when mixing tsx and jsx in same module', { concurrency: false }, async () => {
+  await withTempCwd(async () => {
+    await createComponent('Dashboard', 'Widget', 'tsx');
+    const result = await createComponent('Dashboard', 'Chart', 'jsx');
+
+    assert.equal(result.warnings.length, 1);
+    assert.match(result.warnings[0], /Mixing \.tsx\/\.jsx in one module is discouraged/);
   });
 });

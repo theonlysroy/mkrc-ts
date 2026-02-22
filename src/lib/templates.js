@@ -1,15 +1,13 @@
 export const componentTemplate = (name, lang) => `
 import React from 'react';
 ${lang === 'tsx' ? `\ninterface ${name}Props {}\n` : ''}
-const ${name}${lang === 'tsx' ? `: React.FC<${name}Props>` : ''} = () => {
+export default function ${name}(props${lang === 'tsx' ? `: ${name}Props` : ''}) {
   return (
     <div>
       <h1>${name}</h1>
     </div>
   );
 };
-
-export default ${name};
 `.trimStart();
 
 export const barrelTemplate = (name) =>

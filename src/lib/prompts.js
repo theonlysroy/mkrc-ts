@@ -1,43 +1,60 @@
-import inquirer from 'inquirer';
+import { isCancel, select, text } from '@clack/prompts';
 
 const NAME_PATTERN = /^[A-Za-z][A-Za-z0-9_]*$/;
 
 export async function promptForCreateInputs(prefilled = {}) {
-  const questions = [];
-
-  if (!prefilled.moduleName) {
-    questions.push({
-      type: 'input',
-      name: 'moduleName',
-      message: 'Module name:',
-      validate: validateName,
+  let moduleName = prefilled.moduleName;
+  if (!moduleName) {
+    const moduleAnswer = await text({
+      message: 'Module name',
+      placeholder: 'Dashboard',
+      validate: (value) => validateName(value),
     });
+
+    if (isCancel(moduleAnswer)) {
+      return null;
+    }
+
+    moduleName = moduleAnswer.trim();
   }
 
-  questions.push({
-    type: 'input',
-    name: 'componentName',
-    message: 'Component name:',
-    default: prefilled.componentName || prefilled.moduleName,
-    validate: validateName,
-  });
-
-  if (!prefilled.lang) {
-    questions.push({
-      type: 'list',
-      name: 'lang',
-      message: 'Language:',
-      choices: ['tsx', 'jsx'],
-      default: 'tsx',
+  let componentName = prefilled.componentName;
+  if (!componentName) {
+    const componentAnswer = await text({
+      message: 'Component name',
+      initialValue: moduleName,
+      validate: (value) => validateName(value),
     });
+
+    if (isCancel(componentAnswer)) {
+      return null;
+    }
+
+    componentName = componentAnswer.trim();
   }
 
-  const answers = questions.length > 0 ? await inquirer.prompt(questions) : {};
+  let lang = prefilled.lang;
+  if (!lang) {
+    const langAnswer = await select({
+      message: 'Language',
+      options: [
+        { label: 'TypeScript (.tsx)', value: 'tsx' },
+        { label: 'JavaScript (.jsx)', value: 'jsx' },
+      ],
+      initialValue: 'tsx',
+    });
+
+    if (isCancel(langAnswer)) {
+      return null;
+    }
+
+    lang = langAnswer;
+  }
 
   return {
-    moduleName: prefilled.moduleName || answers.moduleName,
-    componentName: answers.componentName || prefilled.componentName || prefilled.moduleName,
-    lang: prefilled.lang || answers.lang,
+    moduleName,
+    componentName: componentName || moduleName,
+    lang,
   };
 }
 
@@ -52,5 +69,5 @@ function validateName(value) {
     return 'Use letters, numbers, and underscores only. Start with a letter.';
   }
 
-  return true;
+  return undefined;
 }
