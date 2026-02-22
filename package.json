@@ -1,6 +1,6 @@
 {
   "name": "mkrc-ts",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "CLI for generating React component files in module folders",
   "keywords": [
     "react",
